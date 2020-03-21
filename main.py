@@ -50,39 +50,44 @@ def tokenize(code):
         elif kind == 'newline':
             line_start = mo.end()
             line_num += 1
-            continue
         elif kind == 'skip':
             continue
         elif kind == 'mismatch':
-            raise RuntimeError(f'{value!r} unexpected on line {line_num}')
+            raise Exception(f'{value!r} unexpected on line {line_num}')
         yield Token(kind, value, line_num, column)
 
 
 class Parser():
-    def __init__(self, tokens):
-        self.tokens = tokens
-        self.lookahead = next(tokens)
+    def __init__(self):
+        self.code = None
+        self.tokens = None
+        self.lookahead = None
 
-    # def output(self, *args, **kwargs):
-    #     print(*args, **kwargs, end=' ')
-
-    def exec(self):
+    def exec(self, code):
+        self.code = code
+        self.tokens = tokenize(code)
+        try:
+            self.lookahead = next(self.tokens)
+        except StopIteration:
+            return None
         return self.A()
 
     def match(self, t):
         if t == self.lookahead.value:
             try:
+                if self.tokens is None:
+                    raise Exception(
+                        f'syntex error, {self.code[:self.lookahead.column] + "?" + self.code[self.lookahead.column:]}')
                 self.lookahead = next(self.tokens)
             except StopIteration:
                 self.tokens = None
-            except:
-                raise RuntimeError(f'syntex error, {code[:self.lookahead.column] + "^" + code[self.lookahead.column:]}')
 
     def A(self):
         lvalue = self.B()
         lvalue = self.A_tail(lvalue)
         if self.tokens is not None:
-            raise RuntimeError(f'syntex error, {code[:self.lookahead.column] + "^" + code[self.lookahead.column:]}')
+            raise RuntimeError(
+                f'syntex error, {self.code[:self.lookahead.column] + "?" + self.code[self.lookahead.column:]}')
         else:
             return lvalue
 
@@ -148,8 +153,11 @@ class Parser():
             return self.C()
 
 
-code = '3 + + 3^2'
-tokens = tokenize(code)
-parser = Parser(tokens)
-n = parser.exec()
-print(n)
+if __name__ == '__main__':
+    parser = Parser()
+    while True:
+        i = input('>> ')
+        n = parser.exec(i)
+        if n is None:
+            continue
+        print('>>', n)
