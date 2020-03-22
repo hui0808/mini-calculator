@@ -16,7 +16,6 @@ class TokenEnum(Enum):
 
 
 class Token():
-
     def __init__(self, type, value, line, column):
         self.type = type
         self.value = value
@@ -32,7 +31,7 @@ class Token():
         词法分析
         """
         token_specification = [
-            (TokenEnum.num, r'\d+(\.\d*)?'),  # 整数和小数
+            (TokenEnum.num, r'(\d+(\.\d*)?|\.\d+)([Ee][\+-]?\d+)?'),  # 整数、小数、科学计数法
             (TokenEnum.newline, r'\n'),  # 回车
             (TokenEnum.skip, r'[ \t]+'),  # 跳过所有空格以及缩进
             (TokenEnum.lparen, r'\('),  # 左圆括号
@@ -51,7 +50,10 @@ class Token():
             value = mo.group()
             column = mo.start() - line_start
             if kind == 'num':
-                value = float(value) if '.' in value else int(value)
+                if '.' in value or 'e' in value or 'E' in value:
+                    value = float(value)
+                else:
+                    value = int(value)
             elif kind == 'newline':
                 line_start = mo.end()
                 line_num += 1
@@ -153,6 +155,15 @@ class Parser():
         elif self.lookahead.type == TokenEnum.num:
             value = self.lookahead.value
             self.match(value)
+            return value
+        elif self.lookahead.type == TokenEnum.const:
+            if self.lookahead.value == 'pi':
+                value = math.pi
+            elif self.lookahead.value == 'exp':
+                value = math.e
+            else:
+                value = math.tau
+            self.match(self.lookahead.value)
             return value
         else:
             return self.C()
