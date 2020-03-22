@@ -12,7 +12,8 @@ class TokenEnum(Enum):
     compopr = 6
     binopr = 7
     const = 8
-    mismatch = 9
+    func = 9
+    mismatch = 10
 
 
 class Token():
@@ -37,8 +38,9 @@ class Token():
             (TokenEnum.lparen, r'\('),  # 左圆括号
             (TokenEnum.rparen, r'\)'),  # 右圆括号
             (TokenEnum.compopr, r'(==|!=|>=|<=|>|<)'),  # 比较操作符
-            (TokenEnum.binopr, r'(\+|-|\*|/|\^)'),  # 二元操作符
-            (TokenEnum.const, r'(exp|pi|tau)'),  # 常量
+            (TokenEnum.binopr, r'(\+|-|\*|/|\^|%)'),  # 二元操作符
+            (TokenEnum.const, r'(e|pi|tau)'),  # 常量
+            (TokenEnum.func, r'(log10|log2|log|sqrt|cos|sin|tan|acos|asin|atan)'),  # 函数
             (TokenEnum.mismatch, r'\S+'),  # 其他未匹配的词
         ]
         tok_regex = r'|'.join(f'(?P<{pair[0].name}>{pair[1]})' for pair in token_specification)
@@ -54,6 +56,10 @@ class Token():
                     value = float(value)
                 else:
                     value = int(value)
+            elif kind == 'const':
+                value = vars(math)[value]
+            elif kind == 'func':
+                value = vars(math)[value]
             elif kind == 'newline':
                 line_start = mo.end()
                 line_num += 1
@@ -123,6 +129,10 @@ class Parser():
             self.match('/')
             value = lvalue / self.C()
             return self.B_tail(value)
+        elif self.lookahead.value == '%':
+            self.match('%')
+            value = lvalue % self.C()
+            return self.B_tail(value)
         else:
             return lvalue
 
@@ -152,17 +162,19 @@ class Parser():
             value = self.A()
             self.match(')')
             return value
+        elif self.lookahead.type == TokenEnum.func:
+            func = self.lookahead.value
+            self.match(func)
+            self.match('(')
+            value = self.A()
+            self.match(')')
+            return func(value)
         elif self.lookahead.type == TokenEnum.num:
             value = self.lookahead.value
             self.match(value)
             return value
         elif self.lookahead.type == TokenEnum.const:
-            if self.lookahead.value == 'pi':
-                value = math.pi
-            elif self.lookahead.value == 'exp':
-                value = math.e
-            else:
-                value = math.tau
+            value = self.lookahead.value
             self.match(self.lookahead.value)
             return value
         else:
