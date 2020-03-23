@@ -198,6 +198,8 @@ class Parser():
             value = self.lookahead.value
             self.match(self.lookahead.value)
             return value
+        elif self.lookahead.value == ')':
+            self.error()
         else:
             return self.C()
 
