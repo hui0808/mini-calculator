@@ -92,9 +92,9 @@ class Parser():
         return value
 
     def match(self, t):
-        if self.tokens is None:
+        if t != self.lookahead.value or self.tokens is None  :
             self.error()
-        elif t == self.lookahead.value:
+        else:
             try:
                 self.lookahead = next(self.tokens)
             except StopIteration:
