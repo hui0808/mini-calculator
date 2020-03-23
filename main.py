@@ -101,10 +101,16 @@ class Parser():
                 self.tokens = None
 
     def A(self):
+        """
+        A -> B A_tail
+        """
         lvalue = self.B()
         return self.A_tail(lvalue)
 
     def A_tail(self, lvalue):
+        """
+        A_tail -> + B A_tail | - B A_tail | ε
+        """
         if self.lookahead.value == '+':
             self.match('+')
             value = lvalue + self.B()
@@ -117,10 +123,16 @@ class Parser():
             return lvalue
 
     def B(self):
+        """
+        B -> C B_tail
+        """
         lvalue = self.C()
         return self.B_tail(lvalue)
 
     def B_tail(self, lvalue):
+        """
+        B_tail -> * C B_tail | / C B_tail | % C B_tail | ε
+        """
         if self.lookahead.value == '*':
             self.match('*')
             value = lvalue * self.C()
@@ -137,6 +149,9 @@ class Parser():
             return lvalue
 
     def C(self):
+        """
+        C -> + D | - D | D
+        """
         if self.lookahead.value == '+':
             self.match('+')
             value = self.D()
@@ -149,6 +164,9 @@ class Parser():
             return self.D()
 
     def D(self):
+        """
+        D -> E ^ C | E
+        """
         value = self.E()
         if self.lookahead.value == '^':
             self.match('^')
@@ -157,6 +175,9 @@ class Parser():
         return value
 
     def E(self):
+        """
+        E -> num | const | ( A ) | func ( A ) | C
+        """
         if self.lookahead.value == '(':
             self.match('(')
             value = self.A()
