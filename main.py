@@ -1,6 +1,9 @@
 import re
 import math
 from enum import Enum
+import os
+
+os.system("")
 
 
 class TokenEnum(Enum):
@@ -77,7 +80,10 @@ class Parser():
         self.lookahead = None
 
     def error(self):
-        raise Exception(f'syntex error, {self.code[:self.lookahead.column] + "?" + self.code[self.lookahead.column:]}')
+        a = self.code[:self.lookahead.column]
+        b = f'\033[4;1;31m{self.code[self.lookahead.column]}\033[0m'
+        c = self.code[self.lookahead.column + 1:]
+        raise Exception(f'syntex error, {a}{b}{c}')
 
     def exec(self, code):
         self.code = code
@@ -92,7 +98,7 @@ class Parser():
         return value
 
     def match(self, t):
-        if t != self.lookahead.value or self.tokens is None  :
+        if t != self.lookahead.value or self.tokens is None:
             self.error()
         else:
             try:
@@ -207,8 +213,12 @@ class Parser():
 if __name__ == '__main__':
     parser = Parser()
     while True:
-        i = input('>> ')
-        n = parser.exec(i)
-        if n is None:
-            continue
-        print('>>', n)
+        try:
+            i = input('>> ')
+            n = parser.exec(i)
+            if n is None:
+                continue
+            print('>>', n)
+        except Exception as e:
+            print(e)
+    input()
