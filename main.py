@@ -235,4 +235,4 @@ if __name__ == '__main__':
                 continue
             print('>>', n)
         except Exception as e:
-            print(e)
+            print('>>', e)
