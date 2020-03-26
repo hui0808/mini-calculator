@@ -16,18 +16,21 @@ class TokenEnum(Enum):
     binopr = 7
     const = 8
     func = 9
-    mismatch = 10
+    end = 10
+    mismatch = 11
 
 
 class Token():
-    def __init__(self, type, value, line, column):
+    def __init__(self, type, value, line, start, end, line_text):
         self.type = type
         self.value = value
         self.line = line
-        self.column = column
+        self.start = start
+        self.end = end
+        self.line_text = line_text
 
     def __repr__(self):
-        return f"Token(type={self.type}, value={self.value!r}, line={self.line}, column={self.column})"
+        return f"Token({self.type}, {self.value!r}, {(self.line, (self.start, self.end))}, {self.line_text!r})"
 
     @staticmethod
     def tokenize(code):
@@ -44,16 +47,21 @@ class Token():
             (TokenEnum.binopr, r'(\+|-|\*|/|\^|%)'),  # 二元操作符
             (TokenEnum.const, r'(e|pi|tau)'),  # 常量
             (TokenEnum.func, r'(log10|log2|log|sqrt|cos|sin|tan|acos|asin|atan)'),  # 函数
+            (TokenEnum.end, r'$'),  # 结束
             (TokenEnum.mismatch, r'\S+'),  # 其他未匹配的词
         ]
         tok_regex = r'|'.join(f'(?P<{pair[0].name}>{pair[1]})' for pair in token_specification)
         r = re.compile(tok_regex)
         line_num = 1
         line_start = 0
+        line_list = code.split('\n')
+        line_list.append('')
         for mo in r.finditer(code):
             kind = mo.lastgroup
             value = mo.group()
-            column = mo.start() - line_start
+            start = mo.start() - line_start
+            end = mo.end() - line_start
+            cur_line = line_list[line_num - 1]
             if kind == 'num':
                 if '.' in value or 'e' in value or 'E' in value:
                     value = float(value)
@@ -69,42 +77,41 @@ class Token():
             elif kind == 'skip':
                 continue
             elif kind == 'mismatch':
-                raise Exception(f'{value!r} unexpected on line {line_num}')
-            yield Token(TokenEnum[kind], value, line_num, column)
+                f = cur_line[:start] + f'\033[4;1;31m{cur_line[start:end]}\033[0m' + cur_line[end:]
+                raise Exception(f'Line {line_num}: {f} unexpected')
+            yield Token(TokenEnum[kind], value, line_num, start, end, cur_line)
 
 
 class Parser():
-    def __init__(self):
-        self.code = None
-        self.tokens = None
-        self.lookahead = None
+    def __init__(self, tokenizer):
+        self.tokenizer = tokenizer
+        self.lookahead = next(tokenizer)
 
     def error(self):
-        a = self.code[:self.lookahead.column]
-        b = f'\033[4;1;31m{self.code[self.lookahead.column]}\033[0m'
-        c = self.code[self.lookahead.column + 1:]
-        raise Exception(f'syntex error, {a}{b}{c}')
+        line = self.lookahead.line_text
+        line_num = self.lookahead.line
+        start = self.lookahead.start
+        end = self.lookahead.end
+        if self.lookahead.type == TokenEnum.end:
+            start -= 1
+        f = line[:start] + f'\033[4;1;31m{line[start:end]}\033[0m' + line[end:]
+        raise Exception(f'Line {line_num}: {f} syntex error')
 
-    def exec(self, code):
-        self.code = code
-        self.tokens = Token.tokenize(code)
-        try:
-            self.lookahead = next(self.tokens)
-        except StopIteration:
+    def exec(self):
+        if self.lookahead.type == TokenEnum.end:
             return None
         value = self.A()
-        if self.tokens is not None:
-            self.error()
+        self.match(TokenEnum.end)
         return value
 
     def match(self, t):
-        if t != self.lookahead.value or self.tokens is None:
-            self.error()
-        else:
+        if self.lookahead.value == t or self.lookahead.type == t:
             try:
-                self.lookahead = next(self.tokens)
+                self.lookahead = next(self.tokenizer)
             except StopIteration:
-                self.tokens = None
+                self.tokenizer = None
+        else:
+            self.error()
 
     def A(self):
         """
@@ -160,12 +167,10 @@ class Parser():
         """
         if self.lookahead.value == '+':
             self.match('+')
-            value = self.D()
-            return value
+            return self.D()
         elif self.lookahead.value == '-':
             self.match('-')
-            value = -self.D()
-            return value
+            return -self.D()
         else:
             return self.D()
 
@@ -182,7 +187,7 @@ class Parser():
 
     def E(self):
         """
-        E -> num | const | ( A ) | func ( A ) | C
+        E -> num | const | ( A ) | func ( A ) | + C | - C
         """
         if self.lookahead.value == '(':
             self.match('(')
@@ -204,21 +209,30 @@ class Parser():
             value = self.lookahead.value
             self.match(self.lookahead.value)
             return value
-        elif self.lookahead.value == ')':
-            self.error()
-        else:
+        elif self.lookahead.value == '+':
+            self.match('+')
             return self.C()
+        elif self.lookahead.value == '-':
+            self.match('-')
+            return -self.C()
+        else:
+            self.error()
+
+
+def cacl(code):
+    tokengen = Token.tokenize(code)
+    p = Parser(tokengen)
+    n = p.exec()
+    return n
 
 
 if __name__ == '__main__':
-    parser = Parser()
     while True:
         try:
             i = input('>> ')
-            n = parser.exec(i)
+            n = cacl(i)
             if n is None:
                 continue
             print('>>', n)
         except Exception as e:
             print(e)
-    input()
