@@ -219,7 +219,7 @@ class Parser():
             self.error()
 
 
-def cacl(code):
+def calc(code):
     tokengen = Token.tokenize(code)
     p = Parser(tokengen)
     n = p.exec()
@@ -230,7 +230,7 @@ if __name__ == '__main__':
     while True:
         try:
             i = input('>> ')
-            n = cacl(i)
+            n = calc(i)
             if n is None:
                 continue
             print('>>', n)
